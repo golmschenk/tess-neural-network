@@ -12,7 +12,7 @@ flare_catalog_path = os.path.join(data_directory, 'flare_catalog.csv')
 
 def get_count_stars_in_flare_catalog_with_short_cadence_data():
     """Returns the number of targets in the flare catalog with short cadence data."""
-    flare_catalog = np.genfromtxt(flare_catalog_path, delimiter=',', names=True)
+    flare_catalog = np.genfromtxt(flare_catalog_path, delimiter=',', skip_header=1)
     kepler_input_catalog_numbers = [target[0] for target in flare_catalog]
     count_with_short_cadence = 0
     for kepler_input_catalog_number in kepler_input_catalog_numbers:
@@ -24,7 +24,7 @@ def get_count_stars_in_flare_catalog_with_short_cadence_data():
 
 def download_all_short_cadence_observations_for_targets_in_flare_catalog():
     """Downloads and saves all the short cadence observations for the stars which appear in the flare catalog."""
-    flare_catalog = np.genfromtxt(flare_catalog_path, delimiter=',', names=True)
+    flare_catalog = np.genfromtxt(flare_catalog_path, delimiter=',', skip_header=1)
     kepler_input_catalog_numbers = [target[0] for target in flare_catalog]
     for kepler_input_catalog_number in kepler_input_catalog_numbers:
         short_cadence_observations = search_targetpixelfile(kepler_input_catalog_number, cadence='short')
