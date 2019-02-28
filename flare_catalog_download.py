@@ -1,8 +1,9 @@
 """Code for downloading the Kepler flare catalog data."""
 import os
-import pickle
+import warnings
+
 import numpy as np
-from lightkurve import search_targetpixelfile
+from lightkurve import search_targetpixelfile, LightkurveWarning
 
 
 data_directory = 'data'
@@ -26,11 +27,15 @@ def download_all_short_cadence_observations_for_targets_in_flare_catalog():
     flare_catalog = np.genfromtxt(catalog_path, delimiter=',', skip_header=1)
     kepler_input_catalog_numbers = map(int, [target[0] for target in flare_catalog])
     for kepler_input_catalog_number in kepler_input_catalog_numbers:
-        short_cadence_observations = search_targetpixelfile(kepler_input_catalog_number, cadence='short').download_all()
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", category=LightkurveWarning)  # Ignore warnings about empty downloads.
+            short_cadence_observations = search_targetpixelfile(kepler_input_catalog_number,
+                                                                cadence='short').download_all()
+        if short_cadence_observations is None:
+            continue
         for observation_index, observation in enumerate(short_cadence_observations):
-            observation_file_name = f'{kepler_input_catalog_number}_{observation_index}.pickle'
-            with open(os.path.join(data_directory, observation_file_name), 'wb') as observation_file:
-                pickle.dump(observation, observation_file)
+            observation_file_name = f'{kepler_input_catalog_number}_{observation_index}.fits'
+            observation.to_fits(os.path.join(data_directory, observation_file_name), overwrite=True)
 
 
 if __name__ == '__main__':
