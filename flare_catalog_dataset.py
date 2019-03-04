@@ -1,5 +1,6 @@
 """Code for representing the flare catalog dataset."""
 import os
+import random
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
@@ -11,10 +12,13 @@ catalog_path = os.path.join(data_directory, 'flare_catalog.csv')
 
 class FlareCatalogDataset(Dataset):
     """A class to represent the flare catalog dataset."""
-    def __init__(self):
+    def __init__(self, start=None, end=None, random_seed=0):
         self.catalog_data_frame = pd.read_csv(catalog_path, index_col=0)
-        self.observation_file_names = [file_name for file_name in os.listdir(data_directory) if
-                                       file_name.endswith('.fits')]
+        observation_file_names = [file_name for file_name in os.listdir(data_directory) if
+                                  file_name.endswith('.fits')]
+        random.seed(random_seed)
+        random.shuffle(observation_file_names)
+        self.observation_file_names = observation_file_names[start:end]
 
     def __len__(self):
         return len(self.observation_file_names)
