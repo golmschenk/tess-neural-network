@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import Dataset
 import lightkurve
 
-data_directory = 'data'
+data_directory = 'flare_data'
 catalog_path = os.path.join(data_directory, 'flare_catalog.csv')
 
 
@@ -29,6 +29,7 @@ class FlareCatalogDataset(Dataset):
         target_flare_data = self.catalog_data_frame.loc[observation.targetid]
         flare_frequency_coefficients = (target_flare_data['alpha_ffd'], target_flare_data['beta_ffd'])
         return torch.tensor(observation.flux.newbyteorder()), torch.tensor(flare_frequency_coefficients)
+
 
 if __name__ == '__main__':
     flare_catalog_dataset = FlareCatalogDataset()
