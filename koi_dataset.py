@@ -1,9 +1,12 @@
 """Code for representing the KOI dataset."""
+import math
 import os
 import random
+import shutil
 import warnings
 import pandas as pd
-from lightkurve import search_lightcurvefile, LightkurveWarning
+from pathlib import Path
+from lightkurve import search_lightcurvefile, LightkurveWarning, search_targetpixelfile
 
 data_directory = 'koi_data'
 koi_catalog_path = os.path.join(data_directory, 'cumulative_2019.03.08_12.09.57.csv')
@@ -47,37 +50,32 @@ def print_short_cadence_observation_count_for_stars(star_list):
     print(f'Observations: {count_of_observations_with_short_cadence}')
 
 
-def download_all_short_cadence_observations_for_star_list(star_list, directory, max_observations=None):
+def download_all_short_cadence_observations_for_star_list(star_list, directory, max_observations=math.inf):
     """Downloads and saves all the short cadence observations for the stars which appear in the star list."""
-    observations_skipped = 0
-    stars_skipped = 0
+    lightkurve_cache_path = os.path.join(str(Path.home()), '.lightkurve-cache')
+    if os.path.exists(lightkurve_cache_path):
+        shutil.rmtree(lightkurve_cache_path)  # Clear cache to prevent corrupted file downloads.
     observations_downloaded = 0
     stars_downloaded = 0
     os.makedirs(directory, exist_ok=True)
     for kepler_input_catalog_number in star_list:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=LightkurveWarning)  # Ignore warnings about empty downloads.
-            current_target_skipped = False
-            short_cadence_observations = search_lightcurvefile(kepler_input_catalog_number, cadence='short')
+            short_cadence_observations = search_targetpixelfile(kepler_input_catalog_number, cadence='short')
             if len(short_cadence_observations) > 0:
                 stars_downloaded += 1
             for observation_index, observation in enumerate(short_cadence_observations):
                 observation_file_name = f'{kepler_input_catalog_number}_{observation_index}.fits'
-                try:
-                    observation.download().to_fits(os.path.join(directory, observation_file_name), overwrite=True)
-                    observations_downloaded += 1
-                    if observations_downloaded >= max_observations:
-                        break
-                except OSError:
-                    observations_skipped += 1
-                    if not current_target_skipped:
-                        current_target_skipped = True
-                        stars_skipped += 1
+                target_pixel_file = observation.download()
+                light_curve = target_pixel_file.to_lightcurve(aperture_mask=target_pixel_file.pipeline_mask)
+                light_curve.to_fits(os.path.join(directory, observation_file_name), overwrite=True)
+                observations_downloaded += 1
+                if observations_downloaded >= max_observations:
+                    break
+                print(f'\r{observations_downloaded} observations downloaded...', end='')
         if observations_downloaded >= max_observations:
             break
-    print(f'{stars_skipped} stars skipped.')
     print(f'{stars_downloaded} stars downloaded.')
-    print(f'{observations_skipped} observations skipped.')
     print(f'{observations_downloaded} observations downloaded.')
     return observations_downloaded
 
