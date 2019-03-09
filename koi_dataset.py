@@ -4,15 +4,54 @@ import os
 import random
 import shutil
 import warnings
+from dataclasses import dataclass
+import lightkurve
 import pandas as pd
 from pathlib import Path
+import torch
 from lightkurve import search_lightcurvefile, LightkurveWarning, search_targetpixelfile
+from torch.utils.data import Dataset
 
 data_directory = 'koi_data'
 koi_catalog_path = os.path.join(data_directory, 'cumulative_2019.03.08_12.09.57.csv')
 kic_catalog_path = os.path.join(data_directory, 'kic.txt')
 positive_data_directory = os.path.join(data_directory, 'positive')
 negative_data_directory = os.path.join(data_directory, 'negative')
+
+
+@dataclass
+class KoiExample:
+    """A data class to represent the example information."""
+    file_name: str
+    label: bool
+
+
+class KoiCatalogDataset(Dataset):
+    """A class to represent the KOI catalog dataset."""
+    def __init__(self, start=None, end=None, random_seed=0):
+        positive_file_names = [file_name for file_name in os.listdir(positive_data_directory) if
+                               file_name.endswith('.fits')]
+        positive_examples = [KoiExample(file_name=file_name, label=True) for file_name in positive_file_names]
+        negative_file_names = [file_name for file_name in os.listdir(negative_data_directory) if
+                               file_name.endswith('.fits')]
+        negative_examples = [KoiExample(file_name=file_name, label=False) for file_name in negative_file_names]
+        all_examples = positive_examples + negative_examples
+        random.seed(random_seed)  # Make sure the shuffling is consistent between train and test datasets.
+        random.shuffle(all_examples)
+        self.examples = all_examples[start:end]
+
+    def __len__(self):
+        return len(self.examples)
+
+    def __getitem__(self, index):
+        example = self.examples[index]
+        light_curve_file_name = example.file_name
+        if example.label:
+            example_directory = positive_data_directory
+        else:
+            example_directory = negative_data_directory
+        light_curve = lightkurve.open(os.path.join(example_directory, light_curve_file_name))
+        return torch.tensor(light_curve.flux.newbyteorder()), torch.tensor(example.label)
 
 
 def get_easy_positive_stars():
