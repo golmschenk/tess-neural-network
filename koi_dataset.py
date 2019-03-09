@@ -1,22 +1,37 @@
 """Code for representing the KOI dataset."""
 import os
+import random
 import warnings
 import pandas as pd
 from lightkurve import search_lightcurvefile, LightkurveWarning
 
 data_directory = 'koi_data'
-catalog_path = os.path.join(data_directory, 'cumulative_2019.03.08_12.09.57.csv')
+koi_catalog_path = os.path.join(data_directory, 'cumulative_2019.03.08_12.09.57.csv')
+kic_catalog_path = os.path.join(data_directory, 'kic.txt')
 positive_data_directory = os.path.join(data_directory, 'positive')
 negative_data_directory = os.path.join(data_directory, 'negative')
 
 
 def get_easy_positive_stars():
     """Gets star IDs which have confirmed exoplanets with short periods"""
-    koi_data_frame = pd.read_csv(catalog_path, usecols=['kepid', 'koi_disposition', 'koi_period'])
+    koi_data_frame = pd.read_csv(koi_catalog_path, usecols=['kepid', 'koi_disposition', 'koi_period'])
     confirmed_data_frame = koi_data_frame.loc[koi_data_frame['koi_disposition'] == 'CONFIRMED']
     short_period_data_frame = confirmed_data_frame.loc[confirmed_data_frame['koi_period'] <= 10]
     easy_positive_stars = short_period_data_frame['kepid'].unique()
     return easy_positive_stars
+
+
+def get_negative_stars():
+    """Gets star IDs which have confirmed exoplanets with short periods"""
+    koi_data_frame = pd.read_csv(koi_catalog_path, usecols=['kepid'])
+    # Only extra a random subset of rows of the large KIC catalog.
+    random.seed(0)
+    number_of_rows = sum(1 for _ in open(kic_catalog_path)) - 1  # Excluding header.
+    number_of_rows_to_take = 10000  # Just needs to be enough to provide as many negative as positive observations.
+    rows_to_skip = sorted(random.sample(range(1, number_of_rows + 1), number_of_rows - number_of_rows_to_take))
+    kic_data_frame = pd.read_csv(kic_catalog_path, sep='|', usecols=['kic_kepler_id'], skiprows=rows_to_skip)
+    kic_not_in_koi_data_frame = kic_data_frame[~kic_data_frame['kic_kepler_id'].isin(koi_data_frame['kepid'])]
+    return kic_not_in_koi_data_frame
 
 
 def print_short_cadence_observation_count_for_stars(star_list):
@@ -35,14 +50,17 @@ def print_short_cadence_observation_count_for_stars(star_list):
 def download_all_short_cadence_observations_for_star_list(star_list, directory, max_observations=None):
     """Downloads and saves all the short cadence observations for the stars which appear in the star list."""
     observations_skipped = 0
-    targets_skipped = 0
+    stars_skipped = 0
     observations_downloaded = 0
-    os.makedirs(positive_data_directory, exist_ok=True)
+    stars_downloaded = 0
+    os.makedirs(directory, exist_ok=True)
     for kepler_input_catalog_number in star_list:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=LightkurveWarning)  # Ignore warnings about empty downloads.
             current_target_skipped = False
             short_cadence_observations = search_lightcurvefile(kepler_input_catalog_number, cadence='short')
+            if len(short_cadence_observations) > 0:
+                stars_downloaded += 1
             for observation_index, observation in enumerate(short_cadence_observations):
                 observation_file_name = f'{kepler_input_catalog_number}_{observation_index}.fits'
                 try:
@@ -54,21 +72,24 @@ def download_all_short_cadence_observations_for_star_list(star_list, directory, 
                     observations_skipped += 1
                     if not current_target_skipped:
                         current_target_skipped = True
-                        targets_skipped += 1
+                        stars_skipped += 1
         if observations_downloaded >= max_observations:
             break
-    print(f'{targets_skipped} targets skipped.')
+    print(f'{stars_skipped} stars skipped.')
+    print(f'{stars_downloaded} stars downloaded.')
     print(f'{observations_skipped} observations skipped.')
     print(f'{observations_downloaded} observations downloaded.')
     return observations_downloaded
 
 
 if __name__ == '__main__':
+    print('Downloading positive observations...')
     positive_star_list = get_easy_positive_stars()
     positive_observation_count = download_all_short_cadence_observations_for_star_list(positive_star_list,
                                                                                        positive_data_directory)
+    print('Downloading negative observations...')
     negative_star_list = get_negative_stars()
-    download_all_short_cadence_observations_for_star_list(positive_star_list, negative_data_directory,
+    download_all_short_cadence_observations_for_star_list(negative_star_list, negative_data_directory,
                                                           max_observations=positive_observation_count)
 
 
