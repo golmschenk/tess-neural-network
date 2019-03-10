@@ -64,7 +64,7 @@ class KoiCatalogDataset(Dataset):
 
 
 def get_easy_positive_stars():
-    """Gets star IDs which have confirmed exoplanets with short periods"""
+    """Gets star IDs which have confirmed exoplanets with short periods."""
     koi_data_frame = pd.read_csv(koi_catalog_path, usecols=['kepid', 'koi_disposition', 'koi_period'])
     confirmed_data_frame = koi_data_frame.loc[koi_data_frame['koi_disposition'] == 'CONFIRMED']
     short_period_data_frame = confirmed_data_frame.loc[confirmed_data_frame['koi_period'] <= 10]
@@ -73,16 +73,16 @@ def get_easy_positive_stars():
 
 
 def get_negative_stars():
-    """Gets star IDs which have confirmed exoplanets with short periods"""
+    """Gets star IDs which are Kepler targets, but are not in the KOI table."""
     koi_data_frame = pd.read_csv(koi_catalog_path, usecols=['kepid'])
-    # Only extra a random subset of rows of the large KIC catalog.
     random.seed(0)
-    number_of_rows = sum(1 for _ in open(kic_catalog_path)) - 1  # Excluding header.
-    number_of_rows_to_take = 10000  # Just needs to be enough to provide as many negative as positive observations.
-    rows_to_skip = sorted(random.sample(range(1, number_of_rows + 1), number_of_rows - number_of_rows_to_take))
-    kic_data_frame = pd.read_csv(kic_catalog_path, sep='|', usecols=['kic_kepler_id'], skiprows=rows_to_skip)
+    iter_csv = pd.read_csv(kic_catalog_path, sep='|', usecols=['kic_kepler_id', 'kic_fov_flag'], iterator=True,
+                           chunksize=1000)
+    kic_data_frame = pd.concat([chunk[chunk['kic_fov_flag'] == 2] for chunk in iter_csv])
     kic_not_in_koi_data_frame = kic_data_frame[~kic_data_frame['kic_kepler_id'].isin(koi_data_frame['kepid'])]
-    return kic_not_in_koi_data_frame
+    star_list = kic_not_in_koi_data_frame['kic_kepler_id'].unique()
+    random.shuffle(star_list)
+    return star_list
 
 
 def print_short_cadence_observation_count_for_stars(star_list):
@@ -125,7 +125,6 @@ def download_all_short_cadence_observations_for_star_list(star_list, directory, 
             break
     print(f'{stars_downloaded} stars downloaded.')
     print(f'{observations_downloaded} observations downloaded.')
-    return observations_downloaded
 
 
 def remove_already_downloaded_stars_from_list(star_list, directory):
@@ -139,7 +138,7 @@ def remove_already_downloaded_stars_from_list(star_list, directory):
     for index, star in enumerate(reversed(star_list)):
         if any([file_name for file_name in os.listdir(directory) if file_name.startswith(str(star))]):
             start_index_for_undownloaded = -index
-            print(f'Found star {start_index_for_undownloaded} already downloaded')
+            print(f'Found star {start_index_for_undownloaded} (from end of list) already downloaded.')
             break
     return star_list[start_index_for_undownloaded:]
 
@@ -155,7 +154,8 @@ def print_dataset_statistics():
         else:
             example_directory = negative_data_directory
         light_curve = lightkurve.open(os.path.join(example_directory, light_curve_file_name))
-        number_of_elements = len(light_curve.hdu[1].columns['FLUX'].array)
+        flux = light_curve.hdu[1].columns['FLUX'].array
+        number_of_elements = len(flux)
         element_counts.append(number_of_elements)
     print(f'Max elements: {np.max(element_counts)}')
     print(f'Min elements: {np.min(element_counts)}')
@@ -167,12 +167,11 @@ if __name__ == '__main__':
     print('Downloading positive observations...')
     positive_star_list = get_easy_positive_stars()
     positive_star_list = remove_already_downloaded_stars_from_list(positive_star_list, positive_data_directory)
-    positive_observation_count = download_all_short_cadence_observations_for_star_list(positive_star_list,
-                                                                                       positive_data_directory)
+    download_all_short_cadence_observations_for_star_list(positive_star_list, positive_data_directory)
     print('Downloading negative observations...')
     negative_star_list = get_negative_stars()
     negative_star_list = remove_already_downloaded_stars_from_list(negative_star_list, negative_data_directory)
+    positive_observation_file_name_list = [file_name for file_name in os.listdir(positive_data_directory)
+                                           if file_name.endswith('.fits')]
     download_all_short_cadence_observations_for_star_list(negative_star_list, negative_data_directory,
-                                                          max_observations=positive_observation_count)
-
-
+                                                          max_observations=len(positive_observation_file_name_list))
