@@ -18,6 +18,7 @@ koi_catalog_path = os.path.join(data_directory, 'cumulative_2019.03.08_12.09.57.
 kic_catalog_path = os.path.join(data_directory, 'kic.txt')
 positive_data_directory = os.path.join(data_directory, 'positive')
 negative_data_directory = os.path.join(data_directory, 'negative')
+padded_example_length = 50000
 
 
 @dataclass
@@ -40,7 +41,6 @@ class KoiCatalogDataset(Dataset):
         random.seed(random_seed)  # Make sure the shuffling is consistent between train and test datasets.
         random.shuffle(all_examples)
         self.examples = all_examples[start:end]
-        self.padded_example_length = 50000
 
     def __len__(self):
         return len(self.examples)
@@ -54,7 +54,7 @@ class KoiCatalogDataset(Dataset):
             example_directory = negative_data_directory
         light_curve = lightkurve.open(os.path.join(example_directory, light_curve_file_name))
         flux = light_curve.hdu[1].columns['FLUX'].array.newbyteorder()
-        padding_required = self.padded_example_length - flux.size
+        padding_required = padded_example_length - flux.size
         if padding_required < 0:
             padded_flux = flux[:padding_required]
         else:
