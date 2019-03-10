@@ -53,13 +53,14 @@ class KoiCatalogDataset(Dataset):
         else:
             example_directory = negative_data_directory
         light_curve = lightkurve.open(os.path.join(example_directory, light_curve_file_name))
-        flux = light_curve.hdu[1].columns['FLUX'].array.newbyteorder()
+        flux = light_curve.hdu[1].columns['FLUX'].array
+        flux = flux.byteswap().newbyteorder()
         padding_required = padded_example_length - flux.size
         if padding_required < 0:
             padded_flux = flux[:padding_required]
         else:
             padded_flux = np.pad(flux, (0, padding_required), mode='reflect')
-        return torch.tensor(padded_flux), torch.tensor(example.label)
+        return torch.tensor(padded_flux), torch.tensor(example.label, dtype=torch.float32)
 
 
 def get_easy_positive_stars():
