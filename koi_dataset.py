@@ -6,6 +6,7 @@ import shutil
 import warnings
 from dataclasses import dataclass
 import lightkurve
+import numpy as np
 import pandas as pd
 from pathlib import Path
 import torch
@@ -39,6 +40,7 @@ class KoiCatalogDataset(Dataset):
         random.seed(random_seed)  # Make sure the shuffling is consistent between train and test datasets.
         random.shuffle(all_examples)
         self.examples = all_examples[start:end]
+        self.padded_example_length = 50000
 
     def __len__(self):
         return len(self.examples)
@@ -51,7 +53,13 @@ class KoiCatalogDataset(Dataset):
         else:
             example_directory = negative_data_directory
         light_curve = lightkurve.open(os.path.join(example_directory, light_curve_file_name))
-        return torch.tensor(light_curve.flux.newbyteorder()), torch.tensor(example.label)
+        flux = light_curve.hdu[1].columns['FLUX'].array.newbyteorder()
+        padding_required = self.padded_example_length - flux.size
+        if padding_required < 0:
+            padded_flux = flux[:padding_required]
+        else:
+            padded_flux = np.pad(flux, (0, padding_required), mode='reflect')
+        return torch.tensor(padded_flux), torch.tensor(example.label)
 
 
 def get_easy_positive_stars():
@@ -128,12 +136,30 @@ def remove_already_downloaded_stars_from_list(star_list, directory):
     """
     start_index_for_undownloaded = None
     for index, star in enumerate(reversed(star_list)):
-        if any([file_name for file_name in os.listdir(directory) if file_name.startswith(star)]):
+        if any([file_name for file_name in os.listdir(directory) if file_name.startswith(str(star))]):
             start_index_for_undownloaded = -index
             print(f'Found star {start_index_for_undownloaded} already downloaded')
             break
     return star_list[start_index_for_undownloaded:]
 
+
+def print_dataset_statistics():
+    """Prints off various statistics about the dataset."""
+    dataset = KoiCatalogDataset()
+    element_counts = []
+    for example in dataset.examples:
+        light_curve_file_name = example.file_name
+        if example.label:
+            example_directory = positive_data_directory
+        else:
+            example_directory = negative_data_directory
+        light_curve = lightkurve.open(os.path.join(example_directory, light_curve_file_name))
+        number_of_elements = len(light_curve.hdu[1].columns['FLUX'].array)
+        element_counts.append(number_of_elements)
+    print(f'Max elements: {np.max(element_counts)}')
+    print(f'Min elements: {np.min(element_counts)}')
+    print(f'Std elements: {np.std(element_counts)}')
+    print(f'Mean elements: {np.mean(element_counts)}')
 
 
 if __name__ == '__main__':
