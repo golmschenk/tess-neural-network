@@ -119,13 +119,32 @@ def download_all_short_cadence_observations_for_star_list(star_list, directory, 
     return observations_downloaded
 
 
+def remove_already_downloaded_stars_from_list(star_list, directory):
+    """
+    Removes stars which have already been downloaded from the list.
+    Assumes the same list as the previous download is being used, in the same order, and that if a star was
+    downloaded, it was fully downloaded.
+    Best to avoid using this function, but as the MAST download can be unreliable, it allows us to finish downloading.
+    """
+    start_index_for_undownloaded = None
+    for index, star in enumerate(reversed(star_list)):
+        if any([file_name for file_name in os.listdir(directory) if file_name.startswith(star)]):
+            start_index_for_undownloaded = -index
+            print(f'Found star {start_index_for_undownloaded} already downloaded')
+            break
+    return star_list[start_index_for_undownloaded:]
+
+
+
 if __name__ == '__main__':
     print('Downloading positive observations...')
     positive_star_list = get_easy_positive_stars()
+    positive_star_list = remove_already_downloaded_stars_from_list(positive_star_list, positive_data_directory)
     positive_observation_count = download_all_short_cadence_observations_for_star_list(positive_star_list,
                                                                                        positive_data_directory)
     print('Downloading negative observations...')
     negative_star_list = get_negative_stars()
+    negative_star_list = remove_already_downloaded_stars_from_list(negative_star_list, negative_data_directory)
     download_all_short_cadence_observations_for_star_list(negative_star_list, negative_data_directory,
                                                           max_observations=positive_observation_count)
 
