@@ -11,7 +11,7 @@ from koi_model import SmallNet
 
 def train():
     """Trains and evaluates the KOI network."""
-    batch_size = 100
+    batch_size = 500
     validation_dataset_size = 2000
     train_dataset = KoiCatalogDataset(start=None, end=-validation_dataset_size)
     train_dataset_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
@@ -23,7 +23,7 @@ def train():
     criterion = BCEWithLogitsLoss()
 
     for epoch in range(300):
-        total_train_incorrect = 0
+        total_train_correct = 0
         for examples, labels in train_dataset_loader:
             optimizer.zero_grad()
             predicted_scores = network(examples)
@@ -31,16 +31,16 @@ def train():
             loss.backward()
             optimizer.step()
             predicted_labels = torch.sigmoid(predicted_scores.detach()).round().numpy()
-            total_train_incorrect += np.sum(predicted_labels != labels.detach().numpy())
-        train_error = total_train_incorrect / len(train_dataset)
+            total_train_correct += np.sum(predicted_labels == labels.detach().numpy())
+        train_accuracy = total_train_correct / len(train_dataset)
         with torch.no_grad():  # For speed, don't calculate gradient during evaluation.
-            total_validation_incorrect = 0
+            total_validation_correct = 0
             for validation_examples, validation_labels in validation_dataset_loader:
                 predicted_validation_scores = network(validation_examples)
                 predicted_validation_labels = torch.sigmoid(predicted_validation_scores.detach()).round().numpy()
-                total_validation_incorrect += np.sum(predicted_validation_labels != validation_labels.detach().numpy())
-            validation_error = total_validation_incorrect / len(validation_dataset)
-        print('Epoch: {}, Train error: {:.5f}, Validation error: {:.5f}'.format(epoch, train_error, validation_error))
+                total_validation_correct += np.sum(predicted_validation_labels == validation_labels.detach().numpy())
+            validation_accuracy = total_validation_correct / len(validation_dataset)
+        print(f'Epoch: {epoch}, Train accuracy: {train_accuracy:.5f}, Validation accuracy: {validation_accuracy:.5f}')
 
 
 if __name__ == '__main__':
