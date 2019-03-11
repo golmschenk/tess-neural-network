@@ -148,6 +148,10 @@ def print_dataset_statistics():
     """Prints off various statistics about the dataset."""
     dataset = KoiCatalogDataset()
     element_counts = []
+    max_values = []
+    min_values = []
+    min_to_max_differences = []
+    min_to_max_ratio = []
     for example in dataset.examples:
         light_curve_file_name = example.file_name
         if example.label:
@@ -156,26 +160,34 @@ def print_dataset_statistics():
             example_directory = negative_data_directory
         light_curve = lightkurve.open(os.path.join(example_directory, light_curve_file_name))
         flux = light_curve.hdu[1].columns['FLUX'].array
-        number_of_elements = len(flux)
-        element_counts.append(number_of_elements)
+        element_counts.append(len(flux))
+        max_values.append(flux.max())
+        min_values.append(flux.min())
+        min_to_max_differences.append(flux.max() - flux.min())
+        min_to_max_ratio.append(flux.min() / flux.max())
     print(f'Max elements: {np.max(element_counts)}')
     print(f'Min elements: {np.min(element_counts)}')
     print(f'Std elements: {np.std(element_counts)}')
     print(f'Mean elements: {np.mean(element_counts)}')
+    print(f'Max ratio: {np.max(min_to_max_ratio)}')
+    print(f'Min ratio: {np.min(min_to_max_ratio)}')
+    print(f'Std ratio: {np.std(min_to_max_ratio)}')
+    print(f'Mean ratio: {np.mean(min_to_max_ratio)}')
 
 
 if __name__ == '__main__':
-    print('Downloading positive observations...')
-    positive_star_list = get_easy_positive_stars()
-    positive_star_list = remove_already_downloaded_stars_from_list(positive_star_list, positive_data_directory)
-    download_all_short_cadence_observations_for_star_list(positive_star_list, positive_data_directory)
-    print('Downloading negative observations...')
-    negative_star_list = get_negative_stars()
-    negative_star_list = remove_already_downloaded_stars_from_list(negative_star_list, negative_data_directory)
-    positive_observation_file_list = [file_name for file_name in os.listdir(positive_data_directory)
-                                      if file_name.endswith('.fits')]
-    existing_negative_observation_file_list = [file_name for file_name in os.listdir(negative_data_directory)
-                                               if file_name.endswith('.fits')]
-    observations_to_download = len(positive_observation_file_list) - len(existing_negative_observation_file_list)
-    download_all_short_cadence_observations_for_star_list(negative_star_list, negative_data_directory,
-                                                          max_observations=len(positive_observation_file_list))
+    print_dataset_statistics()
+    # print('Downloading positive observations...')
+    # positive_star_list = get_easy_positive_stars()
+    # positive_star_list = remove_already_downloaded_stars_from_list(positive_star_list, positive_data_directory)
+    # download_all_short_cadence_observations_for_star_list(positive_star_list, positive_data_directory)
+    # print('Downloading negative observations...')
+    # negative_star_list = get_negative_stars()
+    # negative_star_list = remove_already_downloaded_stars_from_list(negative_star_list, negative_data_directory)
+    # positive_observation_file_list = [file_name for file_name in os.listdir(positive_data_directory)
+    #                                   if file_name.endswith('.fits')]
+    # existing_negative_observation_file_list = [file_name for file_name in os.listdir(negative_data_directory)
+    #                                            if file_name.endswith('.fits')]
+    # observations_to_download = len(positive_observation_file_list) - len(existing_negative_observation_file_list)
+    # download_all_short_cadence_observations_for_star_list(negative_star_list, negative_data_directory,
+    #                                                       max_observations=len(positive_observation_file_list))

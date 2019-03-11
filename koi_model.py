@@ -1,6 +1,6 @@
 """Code for a small neural network architecture."""
 from torch.nn import Module, Conv1d, Linear
-from torch.nn.functional import leaky_relu, max_pool1d
+from torch.nn.functional import leaky_relu, max_pool1d, avg_pool1d
 
 from koi_dataset import padded_example_length
 
@@ -32,7 +32,7 @@ class SmallNet(Module):
         x = leaky_relu(self.conv5(x))
         x = max_pool1d(x, kernel_size=3)
         x = leaky_relu(self.conv6(x))
-        x = max_pool1d(x, kernel_size=459)
+        x = avg_pool1d(x, kernel_size=459)
         x = x.view(-1, 16)
         x = leaky_relu(self.linear1(x))
         x = self.linear2(x)
