@@ -6,19 +6,19 @@ from torch.utils.data import DataLoader
 import numpy as np
 
 from koi_dataset import KoiCatalogDataset
-from koi_model import SmallNet
+from koi_model import SimplePoolingConvolutionalNet, SimpleStridedConvolutionalNet
 
 
 def train():
     """Trains and evaluates the KOI network."""
-    batch_size = 500
+    batch_size = 100
     validation_dataset_size = 2000
     train_dataset = KoiCatalogDataset(start=None, end=-validation_dataset_size)
     train_dataset_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     validation_dataset = KoiCatalogDataset(start=-validation_dataset_size, end=None)
     validation_dataset_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=True)
 
-    network = SmallNet()
+    network = SimpleStridedConvolutionalNet()
     optimizer = Adam(network.parameters())
     criterion = BCEWithLogitsLoss()
 
