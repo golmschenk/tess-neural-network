@@ -14,8 +14,8 @@ from lightkurve import search_lightcurvefile, LightkurveWarning, search_targetpi
 from torch.utils.data import Dataset
 
 data_directory = 'koi_data'
-koi_catalog_path = os.path.join(data_directory, 'cumulative_2019.03.08_12.09.57.csv')
-kic_catalog_path = os.path.join(data_directory, 'kic.txt')
+koi_catalog_path = os.path.join(data_directory, 'koi.csv')
+kic_catalog_path = os.path.join(data_directory, 'kic.csv')
 positive_data_directory = os.path.join(data_directory, 'positive')
 negative_data_directory = os.path.join(data_directory, 'negative')
 padded_example_length = 50000
@@ -134,6 +134,7 @@ def remove_already_downloaded_stars_from_list(star_list, directory):
     downloaded, it was fully downloaded.
     Best to avoid using this function, but as the MAST download can be unreliable, it allows us to finish downloading.
     """
+    os.makedirs(directory, exist_ok=True)
     start_index_for_undownloaded = None
     for index, star in enumerate(reversed(star_list)):
         if any([file_name for file_name in os.listdir(directory) if file_name.startswith(str(star))]):
