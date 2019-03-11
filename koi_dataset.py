@@ -172,7 +172,10 @@ if __name__ == '__main__':
     print('Downloading negative observations...')
     negative_star_list = get_negative_stars()
     negative_star_list = remove_already_downloaded_stars_from_list(negative_star_list, negative_data_directory)
-    positive_observation_file_name_list = [file_name for file_name in os.listdir(positive_data_directory)
-                                           if file_name.endswith('.fits')]
+    positive_observation_file_list = [file_name for file_name in os.listdir(positive_data_directory)
+                                      if file_name.endswith('.fits')]
+    existing_negative_observation_file_list = [file_name for file_name in os.listdir(negative_data_directory)
+                                               if file_name.endswith('.fits')]
+    observations_to_download = len(positive_observation_file_list) - len(existing_negative_observation_file_list)
     download_all_short_cadence_observations_for_star_list(negative_star_list, negative_data_directory,
-                                                          max_observations=len(positive_observation_file_name_list))
+                                                          max_observations=len(positive_observation_file_list))
