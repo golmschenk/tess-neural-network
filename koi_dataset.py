@@ -55,11 +55,12 @@ class KoiCatalogDataset(Dataset):
         light_curve = lightkurve.open(os.path.join(example_directory, light_curve_file_name))
         flux = light_curve.hdu[1].columns['FLUX'].array
         flux = flux.byteswap().newbyteorder()
-        padding_required = padded_example_length - flux.size
+        normalized_flux = (flux - flux.min()) / (flux.max() - flux.min())
+        padding_required = padded_example_length - normalized_flux.size
         if padding_required < 0:
-            padded_flux = flux[:padding_required]
+            padded_flux = normalized_flux[:padding_required]
         else:
-            padded_flux = np.pad(flux, (0, padding_required), mode='reflect')
+            padded_flux = np.pad(normalized_flux, (0, padding_required), mode='reflect')
         return torch.tensor(padded_flux), torch.tensor(example.label, dtype=torch.float32)
 
 
@@ -176,18 +177,17 @@ def print_dataset_statistics():
 
 
 if __name__ == '__main__':
-    print_dataset_statistics()
-    # print('Downloading positive observations...')
-    # positive_star_list = get_easy_positive_stars()
-    # positive_star_list = remove_already_downloaded_stars_from_list(positive_star_list, positive_data_directory)
-    # download_all_short_cadence_observations_for_star_list(positive_star_list, positive_data_directory)
-    # print('Downloading negative observations...')
-    # negative_star_list = get_negative_stars()
-    # negative_star_list = remove_already_downloaded_stars_from_list(negative_star_list, negative_data_directory)
-    # positive_observation_file_list = [file_name for file_name in os.listdir(positive_data_directory)
-    #                                   if file_name.endswith('.fits')]
-    # existing_negative_observation_file_list = [file_name for file_name in os.listdir(negative_data_directory)
-    #                                            if file_name.endswith('.fits')]
-    # observations_to_download = len(positive_observation_file_list) - len(existing_negative_observation_file_list)
-    # download_all_short_cadence_observations_for_star_list(negative_star_list, negative_data_directory,
-    #                                                       max_observations=len(positive_observation_file_list))
+    print('Downloading positive observations...')
+    positive_star_list = get_easy_positive_stars()
+    positive_star_list = remove_already_downloaded_stars_from_list(positive_star_list, positive_data_directory)
+    download_all_short_cadence_observations_for_star_list(positive_star_list, positive_data_directory)
+    print('Downloading negative observations...')
+    negative_star_list = get_negative_stars()
+    negative_star_list = remove_already_downloaded_stars_from_list(negative_star_list, negative_data_directory)
+    positive_observation_file_list = [file_name for file_name in os.listdir(positive_data_directory)
+                                      if file_name.endswith('.fits')]
+    existing_negative_observation_file_list = [file_name for file_name in os.listdir(negative_data_directory)
+                                               if file_name.endswith('.fits')]
+    observations_to_download = len(positive_observation_file_list) - len(existing_negative_observation_file_list)
+    download_all_short_cadence_observations_for_star_list(negative_star_list, negative_data_directory,
+                                                          max_observations=len(positive_observation_file_list))
