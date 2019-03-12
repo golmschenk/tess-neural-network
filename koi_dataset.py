@@ -55,12 +55,14 @@ class KoiCatalogDataset(Dataset):
         light_curve = lightkurve.open(os.path.join(example_directory, light_curve_file_name))
         flux = light_curve.hdu[1].columns['FLUX'].array
         flux = flux.byteswap().newbyteorder()
-        flux = (flux - flux.min()) / (flux.max() - flux.min())  # Normalize flux.
+        flux = (2 * (flux - flux.min()) / (flux.max() - flux.min())) - 1  # Normalize flux.
         padding_required = padded_example_length - flux.size
         if padding_required < 0:
             padded_flux = flux[:padding_required]
         else:
-            padded_flux = np.pad(flux, (0, padding_required), mode='reflect')
+            pre_padding = random.randint(0, padding_required)
+            post_padding = padding_required - pre_padding
+            padded_flux = np.pad(flux, (pre_padding, post_padding), mode='reflect')
         return torch.tensor(padded_flux), torch.tensor(example.label, dtype=torch.float32)
 
 
