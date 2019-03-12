@@ -23,6 +23,7 @@ def train():
     criterion = BCEWithLogitsLoss()
 
     for epoch in range(300):
+        network.train()
         total_train_correct = 0
         for examples, labels in train_dataset_loader:
             optimizer.zero_grad()
@@ -34,6 +35,7 @@ def train():
             total_train_correct += np.sum(predicted_labels == labels.detach().numpy())
         train_accuracy = total_train_correct / len(train_dataset)
         with torch.no_grad():  # For speed, don't calculate gradient during evaluation.
+            network.eval()
             total_validation_correct = 0
             for validation_examples, validation_labels in validation_dataset_loader:
                 predicted_validation_scores = network(validation_examples)
