@@ -11,36 +11,39 @@ from koi_model import SimplePoolingConvolutionalNet, SimpleStridedConvolutionalN
 
 def train():
     """Trains and evaluates the KOI network."""
-    batch_size = 100
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    batch_size = 1000
     validation_dataset_size = 2000
     train_dataset = KoiCatalogDataset(start=None, end=-validation_dataset_size)
     train_dataset_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
     validation_dataset = KoiCatalogDataset(start=-validation_dataset_size, end=None)
     validation_dataset_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
 
-    network = SimpleStridedConvolutionalNet()
+    network = SimpleStridedConvolutionalNet().to(device)
     optimizer = Adam(network.parameters())
     criterion = BCEWithLogitsLoss()
 
-    for epoch in range(300):
+    for epoch in range(1000):
         network.train()
         total_train_correct = 0
         for examples, labels in train_dataset_loader:
+            examples, labels = examples.to(device), labels.to(device)
             optimizer.zero_grad()
             predicted_scores = network(examples)
             loss = criterion(predicted_scores, labels)
             loss.backward()
             optimizer.step()
-            predicted_labels = torch.sigmoid(predicted_scores.detach()).round().numpy()
-            total_train_correct += np.sum(predicted_labels == labels.detach().numpy())
+            predicted_labels = torch.sigmoid(predicted_scores.detach()).round().cpu().numpy()
+            total_train_correct += np.sum(predicted_labels == labels.detach().cpu().numpy())
         train_accuracy = total_train_correct / len(train_dataset)
         with torch.no_grad():  # For speed, don't calculate gradient during evaluation.
             network.eval()
             total_validation_correct = 0
             for validation_examples, validation_labels in validation_dataset_loader:
+                validation_examples = validation_examples.to(device)
                 predicted_validation_scores = network(validation_examples)
-                predicted_validation_labels = torch.sigmoid(predicted_validation_scores.detach()).round().numpy()
-                total_validation_correct += np.sum(predicted_validation_labels == validation_labels.detach().numpy())
+                predicted_validation_labels = torch.sigmoid(predicted_validation_scores).round().cpu().numpy()
+                total_validation_correct += np.sum(predicted_validation_labels == validation_labels.numpy())
             validation_accuracy = total_validation_correct / len(validation_dataset)
         print(f'Epoch: {epoch}, Train accuracy: {train_accuracy:.5f}, Validation accuracy: {validation_accuracy:.5f}')
 
