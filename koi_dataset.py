@@ -58,7 +58,11 @@ class KoiCatalogDataset(Dataset):
         flux = (2 * (flux - flux.min()) / (flux.max() - flux.min())) - 1  # Normalize flux.
         padding_required = padded_example_length - flux.size
         if padding_required < 0:
-            padded_flux = flux[:padding_required]
+            trimming_start = random.randint(0, abs(padding_required))
+            trimming_end = -(abs(padding_required) - trimming_start)
+            if trimming_end == 0:
+                trimming_end = None
+            padded_flux = flux[trimming_start:trimming_end]
         else:
             pre_padding = random.randint(0, padding_required)
             post_padding = padding_required - pre_padding
