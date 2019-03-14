@@ -20,7 +20,7 @@ def train():
     validation_dataset_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=True, num_workers=2)
 
     network = SimpleStridedConvolutionalNet().to(device)
-    optimizer = Adam(network.parameters())
+    optimizer = Adam(network.parameters(), weight_decay=0.01)
     criterion = BCEWithLogitsLoss()
 
     for epoch in range(1000):
